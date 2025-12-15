@@ -20,18 +20,19 @@ const UserDashboard = () => {
   const [walletAddress, setWalletAddress] = useState("");
   const [myLicense, setMyLicense] = useState<any>(null);
   
-  // --- NEW STATE: RENEWAL ---
+  // --- RENEWAL STATE ---
   const [renewalDue, setRenewalDue] = useState(false);
-  
   const [showStatusModal, setShowStatusModal] = useState(false);
 
-  // --- KEEPING AUTO-LOGIN FOR NOW ---
+  // --- 1. MODIFIED EFFECT: AUTO-LOGIN REMOVED ---
   useEffect(() => {
-    checkWalletAndFetch();
+    // We REMOVED 'checkWalletAndFetch()' from here.
+    // The wallet will ONLY connect when the user clicks the button.
 
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', (accounts: string[]) => {
         if (accounts.length > 0) {
+          // If user switches accounts in MetaMask while already connected
           setWalletAddress(accounts[0]);
           fetchMyLicense(accounts[0], new ethers.BrowserProvider(window.ethereum));
         } else {
@@ -48,19 +49,26 @@ const UserDashboard = () => {
     };
   }, []);
 
-  const checkWalletAndFetch = async () => {
+  // --- 2. MANUAL CONNECT FUNCTION ---
+  const handleConnectWallet = async () => {
     if (window.ethereum) {
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.listAccounts();
+        // This forces the MetaMask popup to appear
+        const accounts = await provider.send("eth_requestAccounts", []);
+        
         if (accounts.length > 0) {
-          const address = await accounts[0].getAddress();
+          const address = accounts[0];
           setWalletAddress(address);
           fetchMyLicense(address, provider);
+          toast({ title: "Connected", description: "Wallet connected successfully." });
         }
       } catch (err) {
         console.error("Wallet connection failed", err);
+        toast({ title: "Connection Failed", description: "Please approve the connection in MetaMask.", variant: "destructive" });
       }
+    } else {
+      toast({ title: "MetaMask Not Found", description: "Please install MetaMask.", variant: "destructive" });
     }
   };
 
@@ -78,10 +86,10 @@ const UserDashboard = () => {
         // Check if the connected wallet owns this license
         if (data[2].toLowerCase() === userAddress.toLowerCase()) {
             
-          // --- NEW LOGIC: CHECK EXPIRY DATE ---
+          // --- SMART RENEWAL LOGIC ---
           const expiryTimestamp = Number(data[4]);
           const currentTimestamp = Math.floor(Date.now() / 1000);
-           const thirtyDays = 30 * 24 * 60 * 60; // TEMPORARY TEST: 700 days// 30 days in seconds
+          const thirtyDays = 30 * 24 * 60 * 60; // 30 days in seconds
           
           // Logic: If expiring in < 30 days AND currently valid
           if (expiryTimestamp - currentTimestamp < thirtyDays && data[5]) {
@@ -109,20 +117,16 @@ const UserDashboard = () => {
     }
   };
 
-  // --- NEW: RENEW FUNCTION ---
   const handleRenew = () => {
-    // In a real scenario, this calls the smart contract. 
-    // For Phase 1/2 WIP, we show the user the request is sent.
     toast({
       title: "Renewal Request Sent 🔄",
       description: "Your request has been forwarded to the Admin for approval.",
       className: "bg-blue-600 text-white"
     });
-    setRenewalDue(false); // Hide the popup after clicking
+    setRenewalDue(false); 
   };
 
-  // PDF Generator
-  const generatePDF = () => {
+  const generatePDF = () => { //pdf generator
     if (!myLicense) return;
     const doc = new jsPDF();
     doc.setLineWidth(1); doc.rect(10, 10, 190, 277);
@@ -157,10 +161,16 @@ const UserDashboard = () => {
             <h1 className="text-3xl font-bold text-slate-900">User Dashboard</h1>
             <p className="text-slate-500">Manage your licenses and applications</p>
           </div>
+          {/* --- TOP RIGHT CONNECT INDICATOR --- */}
+          {walletAddress && (
+             <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 font-mono text-sm">
+               Connected: {walletAddress.slice(0,6)}...{walletAddress.slice(-4)}
+             </div>
+          )}
         </div>
 
-        {/* --- NEW: RENEWAL ALERT NOTIFICATION --- */}
-        {renewalDue && (
+       
+        {renewalDue && ( //renewal alert
           <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in slide-in-from-top-2 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-amber-100 rounded-full text-amber-600">
@@ -177,7 +187,6 @@ const UserDashboard = () => {
             </div>
           </div>
         )}
-        {/* -------------------------------------- */}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {actions.map((action, index) => (
@@ -197,10 +206,17 @@ const UserDashboard = () => {
 
         <h2 className="text-xl font-bold text-slate-900 mb-6">Active Licenses</h2>
         
+       
         {!walletAddress ? (
-           <div className="text-center py-10 bg-white rounded-lg border border-dashed">
-             <p className="text-slate-500 mb-4">Connect your wallet to see your licenses</p>
-             <Button onClick={checkWalletAndFetch}>Connect Wallet</Button>
+           <div className="text-center py-12 bg-white rounded-lg border border-dashed border-slate-300">
+             <div className="mx-auto w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+               <ShieldCheck className="h-6 w-6 text-slate-400" />
+             </div>
+             <h3 className="text-lg font-medium text-slate-900 mb-2">Wallet Not Connected</h3>
+             <p className="text-slate-500 mb-6 max-w-md mx-auto">Please connect your MetaMask wallet to view your digital trade licenses.</p>
+             <Button onClick={handleConnectWallet} className="bg-blue-600 hover:bg-blue-700">
+               Connect Wallet
+             </Button>
            </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-10">
