@@ -1,219 +1,325 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
-import { 
-  FileCheck, 
-  CheckCircle, 
-  XCircle, 
-  RefreshCw, 
-  ShieldCheck, 
-  Bell, 
-  Settings, 
-  BarChart3 
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { FileText, CheckCircle, XCircle, RefreshCw, Search, Loader2, ShieldAlert, Lock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { ethers } from "ethers"; 
+import { CONTRACT_ADDRESS, CONTRACT_ABI, ADMIN_WALLET_ADDRESS } from "@/constants"; 
 
 const AdminDashboard = () => {
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
+  const { toast } = useToast();
+  
+  // --- AUTH STATE ---
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentAddress, setCurrentAddress] = useState("");
+  const [checkingAuth, setCheckingAuth] = useState(false);
+
+  // --- DASHBOARD STATE ---
+  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [applications, setApplications] = useState([
+    {
+      id: 1,
+      businessName: "TechCorp Solutions",
+      owner: "Rahul Sharma",
+      walletAddress: "0x7299...40ff", 
+      date: "2024-03-15",
+      status: "Pending",
+    },
+    {
+      id: 2,
+      businessName: "Green Earth Foods",
+      owner: "Anita Desai",
+      walletAddress: "0x332a...9921",
+      date: "2024-03-14",
+      status: "Pending",
+    }
+  ]);
+
+  // --- NEW: SYNC WITH BLOCKCHAIN ON LOAD ---
+  useEffect(() => {
+    const checkBlockchainData = async () => {
+      if (!window.ethereum) return;
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+        
+        // Get total count
+        const count = await contract.licenseCount();
+        const total = Number(count);
+
+        // Fetch all issued business names from Blockchain
+        const issuedNames = new Set();
+        for (let i = 1; i <= total; i++) {
+          const data = await contract.getLicense(i);
+          issuedNames.add(data[1]); // data[1] is businessName
+        }
+
+        // Update local state: If business exists on-chain, mark as Approved
+        setApplications(prevApps => prevApps.map(app => {
+          if (issuedNames.has(app.businessName)) {
+            return { ...app, status: "Approved" };
+          }
+          return app;
+        }));
+
+      } catch (err) {
+        console.error("Blockchain Sync Error:", err);
+      }
+    };
+
+    checkBlockchainData();
+  }, []);
+
+  // --- 1. SECURE LOGIN FUNCTION ---
+  const handleAdminLogin = async () => {
+    if (!window.ethereum) return alert("MetaMask is required!");
+    
+    setCheckingAuth(true);
+    try {
+      // Connect to MetaMask
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
       
+      setCurrentAddress(userAddress);
+
+      // SECURITY CHECK: Compare connected wallet with the HARDCODED Admin Address
+      if (userAddress.toLowerCase() === ADMIN_WALLET_ADDRESS.toLowerCase()) {
+        setIsAdmin(true);
+        toast({ 
+          title: "Admin Verified 🔓", 
+          description: "Access granted to secure dashboard.",
+          className: "bg-green-600 text-white" 
+        });
+      } else {
+        setIsAdmin(false);
+        toast({ 
+          title: "Access Denied ⛔", 
+          description: `Wallet ${userAddress.slice(0,6)}... is not the Admin.`, 
+          variant: "destructive" 
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Login Failed", description: "Could not connect to wallet.", variant: "destructive" });
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
+
+  // --- BLOCKCHAIN ACTIONS ---
+  const handleApprove = async (id: number, businessName: string) => {
+    try {
+      setProcessingId(id);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      
+      const applicantAddress = await signer.getAddress(); // In real app, use app.walletAddress
+
+      const tx = await contract.issueLicense(businessName, applicantAddress);
+      
+      toast({ title: "Minting License... ⏳", description: "Please wait for blockchain confirmation." });
+      await tx.wait(); 
+
+      setApplications(applications.map(app => 
+        app.id === id ? { ...app, status: "Approved" } : app
+      ));
+      toast({ title: "Success! ✅", description: "License minted on Blockchain.", className: "bg-green-600 text-white" });
+
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Failed ❌", description: error.reason || error.message, variant: "destructive" });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReject = (id: number) => {
+    setApplications(applications.map(app => app.id === id ? { ...app, status: "Rejected" } : app));
+    toast({ title: "Rejected ❌", variant: "destructive" });
+  };
+
+  const handleRevoke = async (id: number) => {
+    if(!confirm("Revoke this license permanently?")) return;
+    
+    // Note: For real revocation, you'd need the License ID from the blockchain
+    // For this UI demo, we just update the status
+    setApplications(applications.map(app => app.id === id ? { ...app, status: "Revoked" } : app));
+    toast({ title: "License Revoked ⚠️", variant: "destructive" });
+  };
+
+  // --- RENDER: LOGIN GATE (If not Admin) ---
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <Header />
+        <div className="flex-grow flex items-center justify-center p-4">
+          <Card className="w-full max-w-md shadow-2xl border-t-4 border-t-slate-800">
+            <CardHeader className="text-center">
+              <div className="mx-auto bg-slate-100 p-4 rounded-full w-fit mb-4">
+                <Lock className="h-10 w-10 text-slate-800" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-slate-900">Admin Verification</CardTitle>
+              <CardDescription>
+                This area is restricted to the Contract Owner. <br/>
+                Please connect the <strong>Admin Wallet</strong> to proceed.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {currentAddress && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-center text-sm text-red-700">
+                  <p className="font-bold">Access Denied</p>
+                  <p>Connected: {currentAddress.slice(0, 6)}...{currentAddress.slice(-4)}</p>
+                  <p>This wallet is not authorized.</p>
+                </div>
+              )}
+              <Button 
+                onClick={handleAdminLogin} 
+                className="w-full h-12 text-lg bg-slate-900 hover:bg-slate-800"
+                disabled={checkingAuth}
+              >
+                {checkingAuth ? <Loader2 className="animate-spin mr-2" /> : <><ShieldAlert className="mr-2 h-5 w-5" /> Verify Admin Identity</>}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // --- RENDER: DASHBOARD (Only if isAdmin === true) ---
+  const stats = [
+    { label: "Pending", count: applications.filter(a => a.status === "Pending").length, sub: "Action Required", color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Approved", count: applications.filter(a => a.status === "Approved").length, sub: "Total Minted", color: "text-green-600", bg: "bg-green-50" },
+    { label: "Revoked", count: applications.filter(a => a.status === "Revoked").length, sub: "Action Taken", color: "text-red-600", bg: "bg-red-50" },
+    { label: "Active", count: 342, sub: "Total issued", color: "text-purple-600", bg: "bg-purple-50" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <Header />
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage licenses and applications</p>
+        
+        {/* Top Bar */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-slate-900">Admin Portal</h1>
+              <Badge className="bg-slate-900 text-white hover:bg-slate-800">SECURE MODE</Badge>
+            </div>
+            <p className="text-slate-500">Logged in as: <span className="font-mono text-xs">{currentAddress}</span></p>
+          </div>
+          <Button variant="outline" onClick={() => setIsAdmin(false)}>Disconnect</Button>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pending Applications
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">24</div>
-              <p className="text-xs text-muted-foreground">+3 from yesterday</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Approved Today
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">12</div>
-              <p className="text-xs text-muted-foreground">+2 from yesterday</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Renewal Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">8</div>
-              <p className="text-xs text-muted-foreground">Requires attention</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Active Licenses
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">342</div>
-              <p className="text-xs text-muted-foreground">Total issued</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-primary">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
-                <FileCheck className="h-6 w-6 text-primary" />
-              </div>
-              <CardTitle>Pending Applications</CardTitle>
-              <CardDescription>Review new license applications</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center mb-2">
-                <CheckCircle className="h-6 w-6 text-green-500" />
-              </div>
-              <CardTitle>Approve License</CardTitle>
-              <CardDescription>Approve pending applications</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-red-500/10 flex items-center justify-center mb-2">
-                <XCircle className="h-6 w-6 text-red-500" />
-              </div>
-              <CardTitle>Reject / Revoke</CardTitle>
-              <CardDescription>Reject or revoke licenses</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-2">
-                <RefreshCw className="h-6 w-6 text-blue-500" />
-              </div>
-              <CardTitle>Renewal Requests</CardTitle>
-              <CardDescription>Process license renewals</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center mb-2">
-                <ShieldCheck className="h-6 w-6 text-purple-500" />
-              </div>
-              <CardTitle>Verify License</CardTitle>
-              <CardDescription>Verify license authenticity</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-yellow-500/10 flex items-center justify-center mb-2">
-                <Bell className="h-6 w-6 text-yellow-500" />
-              </div>
-              <CardTitle>Send Notifications</CardTitle>
-              <CardDescription>Notify users about updates</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-cyan-500/10 flex items-center justify-center mb-2">
-                <Settings className="h-6 w-6 text-cyan-500" />
-              </div>
-              <CardTitle>Manage Account</CardTitle>
-              <CardDescription>Admin account settings</CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-all cursor-pointer">
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center mb-2">
-                <BarChart3 className="h-6 w-6 text-orange-500" />
-              </div>
-              <CardTitle>Analytics</CardTitle>
-              <CardDescription>View system statistics</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Applications</CardTitle>
-              <CardDescription>Latest license applications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-4 border-b">
-                  <div>
-                    <p className="font-medium">ABC Trading Ltd.</p>
-                    <p className="text-sm text-muted-foreground">Business License</p>
-                  </div>
-                  <Badge>Pending</Badge>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          {stats.map((stat, i) => (
+            <Card key={i} className="border-none shadow-sm">
+              <CardContent className="p-6">
+                <p className={`text-sm font-medium ${stat.color} mb-1`}>{stat.label}</p>
+                <div className="flex items-end justify-between">
+                  <h3 className="text-3xl font-bold text-slate-900">{stat.count}</h3>
+                  <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">{stat.sub}</span>
                 </div>
-                <div className="flex items-center justify-between pb-4 border-b">
-                  <div>
-                    <p className="font-medium">XYZ Corp</p>
-                    <p className="text-sm text-muted-foreground">Trade License</p>
-                  </div>
-                  <Badge>Pending</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Tech Solutions Inc.</p>
-                    <p className="text-sm text-muted-foreground">Professional License</p>
-                  </div>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">In Review</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common administrative tasks</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button className="w-full justify-start" variant="outline">
-                <FileCheck className="mr-2 h-4 w-4" />
-                Review Pending Applications
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Bulk Approve Licenses
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <Bell className="mr-2 h-4 w-4" />
-                Send System Notification
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <BarChart3 className="mr-2 h-4 w-4" />
-                Generate Report
-              </Button>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ))}
         </div>
+
+        {/* Actions */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+          {[
+            { label: "Pending Apps", icon: FileText },
+            { label: "Approved List", icon: CheckCircle },
+            { label: "Revoke/Reject", icon: XCircle },
+            { label: "Renewals", icon: RefreshCw },
+            { label: "Verify", icon: Search },
+          ].map((btn, i) => (
+            <Button key={i} variant="outline" className="h-24 flex-col gap-2 bg-white hover:bg-slate-50 hover:border-blue-300">
+              <btn.icon className="h-6 w-6 text-slate-600" />
+              <span className="text-slate-700">{btn.label}</span>
+            </Button>
+          ))}
+        </div>
+
+        {/* Main Table */}
+        <Card className="shadow-lg border-slate-200">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+            <h2 className="text-lg font-bold text-slate-900">Pending Applications</h2>
+            <p className="text-sm text-slate-500">Review requests. Actions are permanent on Blockchain.</p>
+          </div>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="pl-6">Business Name</TableHead>
+                  <TableHead>Applicant</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right pr-6">Decisions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {applications.map((app) => (
+                  <TableRow key={app.id}>
+                    <TableCell className="pl-6 font-medium">{app.businessName}</TableCell>
+                    <TableCell>{app.owner}</TableCell>
+                    <TableCell>{app.date}</TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        app.status === "Approved" ? "default" : 
+                        app.status === "Rejected" ? "destructive" : 
+                        app.status === "Revoked" ? "destructive" : "secondary"
+                      }>
+                        {app.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right pr-6">
+                      
+                      {app.status === "Pending" && (
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            size="sm" variant="outline"
+                            className="text-red-600 hover:bg-red-50 border-red-200"
+                            onClick={() => handleReject(app.id)}
+                            disabled={processingId !== null}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" /> Reject
+                          </Button>
+
+                          <Button 
+                            size="sm" 
+                            className="bg-slate-900 hover:bg-slate-800 text-white"
+                            onClick={() => handleApprove(app.id, app.businessName)}
+                            disabled={processingId !== null}
+                          >
+                            {processingId === app.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve & Mint"}
+                          </Button>
+                        </div>
+                      )}
+
+                      {app.status === "Approved" && (
+                        <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => handleRevoke(app.id)}>
+                          Revoke
+                        </Button>
+                      )}
+
+                      {(app.status === "Rejected" || app.status === "Revoked") && (
+                        <span className="text-slate-400 text-sm italic">Case Closed</span>
+                      )}
+
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

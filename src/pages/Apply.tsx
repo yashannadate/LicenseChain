@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
-import { Upload } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 const Apply = () => {
   const navigate = useNavigate();
@@ -19,144 +19,152 @@ const Apply = () => {
     e.preventDefault();
     setLoading(true);
     
+    // Simulate a network request
     setTimeout(() => {
       setLoading(false);
       toast({
         title: "Application Submitted",
-        description: "Your license application has been submitted successfully!",
+        description: "Your application is now under review.",
+        className: "bg-green-600 text-white",
       });
-      navigate("/dashboard");
+      navigate("/user-dashboard");
     }, 1500);
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-slate-50">
       <Header />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-2xl mx-auto">
+          
+          {/* Simple Back Button */}
+          <Button 
+            variant="ghost" 
+            className="mb-4 pl-0 text-slate-500 hover:text-slate-900" 
+            onClick={() => navigate("/user-dashboard")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+          </Button>
+
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">Apply for Business License</CardTitle>
-              <CardDescription>
-                Fill out the form below to submit your license application. All fields are required.
-              </CardDescription>
+              <CardTitle className="text-xl font-bold">New License Application</CardTitle>
+              <CardDescription>Fill in the details below to request a new blockchain license.</CardDescription>
             </CardHeader>
+            
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
+                
+                {/* 1. License Details */}
                 <div className="space-y-2">
-                  <Label htmlFor="license-type">License Type</Label>
+                  <Label>License Type</Label>
                   <Select required>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select license type" />
+                      <SelectValue placeholder="Select a license type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="business">Business License</SelectItem>
                       <SelectItem value="trade">Trade License</SelectItem>
-                      <SelectItem value="professional">Professional License</SelectItem>
-                      <SelectItem value="food">Food & Beverage License</SelectItem>
+                      <SelectItem value="food">Food Safety License</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
+                {/* 2. Business Info (Side by Side) */}
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="business-name">Business Name</Label>
-                    <Input id="business-name" placeholder="Your Business Ltd." required />
+                    <Label>Business Name</Label>
+                    <Input placeholder="e.g. My Company Ltd" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="registration-number">Registration Number</Label>
-                    <Input id="registration-number" placeholder="REG123456" required />
+                    <Label>Registration Number</Label>
+                    <Input placeholder="e.g. REG-1234" required />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="business-address">Business Address</Label>
-                  <Textarea 
-                    id="business-address" 
-                    placeholder="Enter your complete business address"
-                    rows={3}
-                    required 
-                  />
+                  <Label>Business Address</Label>
+                  <Textarea placeholder="Enter full address" required />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
+                {/* 3. Contact Info (Side by Side) */}
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="contact-person">Contact Person</Label>
-                    <Input id="contact-person" placeholder="John Doe" required />
+                    <Label>Contact Person</Label>
+                    <Input placeholder="Full Name" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contact-email">Contact Email</Label>
-                    <Input id="contact-email" type="email" placeholder="contact@business.com" required />
+                    <Label>Email Address</Label>
+                    <Input type="email" placeholder="name@email.com" required />
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" placeholder="+1 234 567 8900" required />
+                    <Label>Phone Number</Label>
+                    <Input type="tel" placeholder="+91 99999 00000" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="business-type">Business Type</Label>
+                    <Label>Sector</Label>
                     <Select required>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
+                        <SelectValue placeholder="Select Sector" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="retail">Retail</SelectItem>
-                        <SelectItem value="wholesale">Wholesale</SelectItem>
-                        <SelectItem value="service">Service</SelectItem>
+                        <SelectItem value="service">Services</SelectItem>
                         <SelectItem value="manufacturing">Manufacturing</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
+                {/* 4. Description */}
                 <div className="space-y-2">
-                  <Label htmlFor="business-description">Business Description</Label>
-                  <Textarea 
-                    id="business-description" 
-                    placeholder="Briefly describe your business activities"
-                    rows={4}
-                    required 
-                  />
+                  <Label>Business Description</Label>
+                  <Textarea placeholder="Short description of your business activities..." rows={3} required />
                 </div>
 
-                <div className="space-y-4 p-6 border-2 border-dashed rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Upload className="h-5 w-5 text-primary" />
-                    <Label>Upload Required Documents</Label>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="kyc-document" className="text-sm">KYC Document</Label>
-                    <Input id="kyc-document" type="file" accept=".pdf,.jpg,.png" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="business-certificate" className="text-sm">Business Certificate</Label>
-                    <Input id="business-certificate" type="file" accept=".pdf,.jpg,.png" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="tax-document" className="text-sm">Tax Registration</Label>
-                    <Input id="tax-document" type="file" accept=".pdf,.jpg,.png" />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="additional-docs" className="text-sm">Additional Documents (Optional)</Label>
-                    <Input id="additional-docs" type="file" accept=".pdf,.jpg,.png" multiple />
+                {/* 5. Documents Section */}
+                <div className="pt-2">
+                  <h3 className="text-sm font-semibold mb-3">Required Documents</h3>
+                  <div className="space-y-4 p-4 border rounded-md bg-slate-50">
+                    
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">KYC Document</Label>
+                      <Input type="file" accept=".pdf,.jpg" className="bg-white" required />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">Business Certificate</Label>
+                      <Input type="file" accept=".pdf,.jpg" className="bg-white" required />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">Tax Registration</Label>
+                      <Input type="file" accept=".pdf,.jpg" className="bg-white" required />
+                    </div>
+
+                    {/* Restored Optional Field */}
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">Additional Documents (Optional)</Label>
+                      <Input type="file" accept=".pdf,.jpg" multiple className="bg-white" />
+                    </div>
+
                   </div>
                 </div>
 
-                <div className="flex gap-4 pt-4">
-                  <Button type="submit" className="flex-1" disabled={loading}>
-                    {loading ? "Submitting..." : "Submit Application"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => navigate("/dashboard")}>
+                {/* Actions */}
+                <div className="flex gap-4 pt-2">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/user-dashboard")}>
                     Cancel
                   </Button>
+                  <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700" disabled={loading}>
+                    {loading ? "Submitting..." : "Submit Application"}
+                  </Button>
                 </div>
+
               </form>
             </CardContent>
           </Card>

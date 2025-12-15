@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Security (CRITICAL - Do not upload keys)
+.env
+
+# Truffle / Smart Contract Build Artifacts
+build/
+contracts/build/

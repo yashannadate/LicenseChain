@@ -5,152 +5,208 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
-import { Search, CheckCircle, XCircle } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { ethers } from "ethers";
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/constants";
 
 const Verify = () => {
   const [licenseId, setLicenseId] = useState("");
   const [verificationResult, setVerificationResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!licenseId) return;
     
-    // Simulate verification
-    setTimeout(() => {
-      setLoading(false);
-      // Mock result - in real app this would be blockchain verification
+    setLoading(true);
+    setSearched(true);
+    setVerificationResult(null);
+    setError("");
+
+    try {
+      // 1. Connect to Blockchain (Read-Only Mode)
+      // We don't need a "Signer" (Wallet) to read data, just a Provider.
+      let provider;
+      if (window.ethereum) {
+        provider = new ethers.BrowserProvider(window.ethereum);
+      } else {
+        // Fallback if user has no MetaMask (Use a public RPC URL if needed, or alert)
+        alert("MetaMask is required to read the blockchain.");
+        setLoading(false);
+        return;
+      }
+
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+      // 2. Call the Smart Contract
+      // Solidity Function: getLicense(uint256 _licenseId)
+      const data = await contract.getLicense(licenseId);
+
+      // 3. Format the Data (Solidity returns complex types)
+      const formattedResult = {
+        id: data[0].toString(),
+        businessName: data[1],
+        walletAddress: data[2],
+        issueDate: new Date(Number(data[3]) * 1000).toLocaleDateString(), // Convert Timestamp
+        expiryDate: new Date(Number(data[4]) * 1000).toLocaleDateString(),
+        isValid: data[5]
+      };
+
       setVerificationResult({
-        isValid: licenseId.length > 5,
-        licenseNumber: licenseId,
-        businessName: "ABC Trading Ltd.",
-        licenseType: "Business License",
-        issueDate: "January 1, 2024",
-        expiryDate: "December 31, 2025",
-        status: "Active",
-        blockchainHash: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1"
+        isValid: formattedResult.isValid,
+        licenseNumber: formattedResult.id,
+        businessName: formattedResult.businessName,
+        licenseType: "Business License", // This is static for now
+        issueDate: formattedResult.issueDate,
+        expiryDate: formattedResult.expiryDate,
+        status: formattedResult.isValid ? "Active" : "Revoked"
       });
-    }, 1000);
+
+    } catch (err: any) {
+      console.error(err);
+      // If the ID doesn't exist, the contract usually reverts
+      setError("License ID not found on Blockchain.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-slate-50">
       <Header />
       
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Verify License</h1>
-            <p className="text-muted-foreground">
-              Enter a license number to verify its authenticity on the blockchain
+      <main className="flex-grow container mx-auto px-4 py-12">
+        <div className="max-w-2xl mx-auto space-y-8">
+          
+          <div className="text-center space-y-4">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
+              Verify License Validity
+            </h1>
+            <p className="text-lg text-slate-600 max-w-lg mx-auto">
+              Enter a unique license ID below to verify its authenticity and status on the Ethereum blockchain.
             </p>
           </div>
 
-          <Card>
+          <Card className="border-slate-200 shadow-lg">
             <CardHeader>
-              <CardTitle>License Verification</CardTitle>
+              <CardTitle className="text-xl">License Search</CardTitle>
               <CardDescription>
-                Verify the authenticity and validity of any issued license
+                Search by License ID (e.g., 101)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleVerify} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="license-id">License Number</Label>
-                  <div className="flex gap-2">
+                <div className="flex flex-col md:flex-row gap-3">
+                  <div className="flex-grow">
+                    <Label htmlFor="license-id" className="sr-only">License Number</Label>
                     <Input 
                       id="license-id" 
-                      placeholder="Enter license number (e.g., LIC-2024-12345)"
+                      placeholder="Enter License ID (e.g., 101)"
                       value={licenseId}
                       onChange={(e) => setLicenseId(e.target.value)}
+                      className="h-12 text-lg bg-slate-50 border-slate-300 focus:border-blue-500"
                       required 
                     />
-                    <Button type="submit" disabled={loading}>
-                      <Search className="mr-2 h-4 w-4" />
-                      {loading ? "Verifying..." : "Verify"}
-                    </Button>
                   </div>
-                </div>
-              </form>
-
-              {verificationResult && (
-                <div className="mt-6 p-6 border rounded-lg space-y-4">
-                  <div className="flex items-center gap-3 pb-4 border-b">
-                    {verificationResult.isValid ? (
+                  <Button 
+                    type="submit" 
+                    disabled={loading} 
+                    className="h-12 px-8 bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all"
+                  >
+                    {loading ? (
                       <>
-                        <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                          <CheckCircle className="h-6 w-6 text-green-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-green-600">License Verified</h3>
-                          <p className="text-sm text-muted-foreground">
-                            This license is valid and authentic
-                          </p>
-                        </div>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Verifying
                       </>
                     ) : (
                       <>
-                        <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                          <XCircle className="h-6 w-6 text-red-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-red-600">Invalid License</h3>
-                          <p className="text-sm text-muted-foreground">
-                            This license could not be verified
-                          </p>
-                        </div>
+                        <Search className="mr-2 h-5 w-5" /> Verify Now
                       </>
                     )}
-                  </div>
-
-                  {verificationResult.isValid && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">License Number</p>
-                          <p className="font-medium">{verificationResult.licenseNumber}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Status</p>
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">
-                            {verificationResult.status}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-sm text-muted-foreground">Business Name</p>
-                        <p className="font-medium">{verificationResult.businessName}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-sm text-muted-foreground">License Type</p>
-                        <p className="font-medium">{verificationResult.licenseType}</p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Issue Date</p>
-                          <p className="font-medium">{verificationResult.issueDate}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Expiry Date</p>
-                          <p className="font-medium">{verificationResult.expiryDate}</p>
-                        </div>
-                      </div>
-
-                      <div className="pt-3 border-t">
-                        <p className="text-sm text-muted-foreground mb-1">Blockchain Hash</p>
-                        <p className="font-mono text-xs break-all bg-muted p-2 rounded">
-                          {verificationResult.blockchainHash}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  </Button>
                 </div>
-              )}
+              </form>
             </CardContent>
           </Card>
+
+          {searched && !loading && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {error ? (
+                 <Card className="border-2 border-red-100 shadow-md">
+                   <CardContent className="p-6 text-center">
+                     <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                     <h3 className="text-xl font-bold text-slate-900 mb-2">License Not Found</h3>
+                     <p className="text-slate-500">{error}</p>
+                   </CardContent>
+                 </Card>
+              ) : (
+                <Card className={`border-2 shadow-md ${verificationResult?.isValid ? 'border-green-100' : 'border-red-100'}`}>
+                  <CardContent className="p-6 md:p-8">
+                    
+                    <div className={`flex items-center gap-4 p-4 rounded-lg mb-6 ${verificationResult?.isValid ? 'bg-green-50' : 'bg-red-50'}`}>
+                      {verificationResult?.isValid ? (
+                        <>
+                          <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                            <CheckCircle2 className="h-6 w-6 text-green-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-bold text-green-800">License Verified</h3>
+                            <p className="text-green-700 text-sm">This license is authentic and active on the blockchain.</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                            <XCircle className="h-6 w-6 text-red-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-bold text-red-800">Invalid License</h3>
+                            <p className="text-red-700 text-sm">This license has been REVOKED.</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="grid gap-6 md:grid-cols-2 text-sm">
+                      <div className="space-y-1">
+                        <p className="text-slate-500 font-medium">License Number</p>
+                        <p className="text-slate-900 font-semibold text-lg">#{verificationResult?.licenseNumber}</p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-slate-500 font-medium">Current Status</p>
+                        <Badge className={`${verificationResult?.isValid ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"} border-transparent px-3 py-1`}>
+                          {verificationResult?.status}
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-1 col-span-2 md:col-span-1">
+                        <p className="text-slate-500 font-medium">Business Name</p>
+                        <p className="text-slate-900 font-semibold text-base">{verificationResult?.businessName}</p>
+                      </div>
+
+                      <div className="space-y-1 col-span-2 md:col-span-1">
+                        <p className="text-slate-500 font-medium">License Type</p>
+                        <p className="text-slate-900 font-medium">{verificationResult?.licenseType}</p>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-100 col-span-2 grid grid-cols-2 gap-6">
+                        <div>
+                          <p className="text-slate-500 font-medium mb-1">Issue Date</p>
+                          <p className="text-slate-700">{verificationResult?.issueDate}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500 font-medium mb-1">Expiry Date</p>
+                          <p className="text-slate-700">{verificationResult?.expiryDate}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
         </div>
       </main>
     </div>
