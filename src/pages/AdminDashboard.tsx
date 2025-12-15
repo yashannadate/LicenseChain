@@ -1,188 +1,149 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { ethers } from "ethers";
+import { 
+  FileText, CheckCircle, XCircle, RefreshCw, Search, 
+  Loader2, ShieldAlert, Lock, LogOut, Wallet, Eye, ExternalLink 
+} from "lucide-react";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileText, CheckCircle, XCircle, RefreshCw, Search, Loader2, ShieldAlert, Lock } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ethers } from "ethers"; 
-import { CONTRACT_ADDRESS, CONTRACT_ABI, ADMIN_WALLET_ADDRESS } from "@/constants"; 
+import { CONTRACT_ADDRESS, CONTRACT_ABI, ADMIN_WALLET_ADDRESS } from "@/constants";
+
+interface Application {
+  id: number;
+  businessName: string;
+  regNumber: string;
+  sector: string;
+  applicant: string;
+  date: string;
+  status: "Pending" | "Approved" | "Rejected" | "Revoked";
+  ipfsHash: string;
+}
 
 const AdminDashboard = () => {
   const { toast } = useToast();
-  
-  // --- AUTH STATE ---
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentAddress, setCurrentAddress] = useState("");
-  const [checkingAuth, setCheckingAuth] = useState(false);
-
-  // --- DASHBOARD STATE ---
+  const [isConnecting, setIsConnecting] = useState(false);
   const [processingId, setProcessingId] = useState<number | null>(null);
-  const [applications, setApplications] = useState([
-    {
-      id: 1,
-      businessName: "TechCorp Solutions",
-      owner: "Rahul Sharma",
-      walletAddress: "0x7299...40ff", 
-      date: "2024-03-15",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      businessName: "Green Earth Foods",
-      owner: "Anita Desai",
-      walletAddress: "0x332a...9921",
-      date: "2024-03-14",
-      status: "Pending",
-    }
-  ]);
+  const [applications, setApplications] = useState<Application[]>([]);
 
-  // --- NEW: SYNC WITH BLOCKCHAIN ON LOAD ---
   useEffect(() => {
-    const checkBlockchainData = async () => {
-      if (!window.ethereum) return;
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-        
-        // Get total count
-        const count = await contract.licenseCount();
-        const total = Number(count);
+    if (isAdmin) fetchBlockchainData();
+  }, [isAdmin]);
 
-        // Fetch all issued business names from Blockchain
-        const issuedNames = new Set();
-        for (let i = 1; i <= total; i++) {
-          const data = await contract.getLicense(i);
-          issuedNames.add(data[1]); // data[1] is businessName
-        }
-
-        // Update local state: If business exists on-chain, mark as Approved
-        setApplications(prevApps => prevApps.map(app => {
-          if (issuedNames.has(app.businessName)) {
-            return { ...app, status: "Approved" };
-          }
-          return app;
-        }));
-
-      } catch (err) {
-        console.error("Blockchain Sync Error:", err);
-      }
-    };
-
-    checkBlockchainData();
-  }, []);
-
-  // --- 1. SECURE LOGIN FUNCTION ---
-  const handleAdminLogin = async () => {
-    if (!window.ethereum) return alert("MetaMask is required!");
+  // --- FORCE POPUP LOGIN ---
+  const handleLogin = async () => {
+    if (!window.ethereum) return toast({ title: "Error", description: "MetaMask not found", variant: "destructive" });
     
-    setCheckingAuth(true);
+    setIsConnecting(true);
     try {
-      // Connect to MetaMask
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const userAddress = await signer.getAddress();
       
-      setCurrentAddress(userAddress);
+      // ⚠️ FORCE METAMASK POPUP
+      await provider.send("eth_requestAccounts", []);
+      
+      const signer = await provider.getSigner();
+      const address = await signer.getAddress();
+      setCurrentAddress(address);
 
-      // SECURITY CHECK: Compare connected wallet with the HARDCODED Admin Address
-      if (userAddress.toLowerCase() === ADMIN_WALLET_ADDRESS.toLowerCase()) {
+      if (address.toLowerCase() === ADMIN_WALLET_ADDRESS.toLowerCase()) {
         setIsAdmin(true);
-        toast({ 
-          title: "Admin Verified 🔓", 
-          description: "Access granted to secure dashboard.",
-          className: "bg-green-600 text-white" 
-        });
+        toast({ title: "Welcome Admin 🔓", className: "bg-green-600 text-white" });
       } else {
-        setIsAdmin(false);
-        toast({ 
-          title: "Access Denied ⛔", 
-          description: `Wallet ${userAddress.slice(0,6)}... is not the Admin.`, 
-          variant: "destructive" 
-        });
+        toast({ title: "Access Denied ⛔", description: "Wallet is not authorized.", variant: "destructive" });
       }
     } catch (error) {
       console.error(error);
-      toast({ title: "Login Failed", description: "Could not connect to wallet.", variant: "destructive" });
     } finally {
-      setCheckingAuth(false);
+      setIsConnecting(false);
     }
   };
 
-  // --- BLOCKCHAIN ACTIONS ---
-  const handleApprove = async (id: number, businessName: string) => {
+  const fetchBlockchainData = async () => {
+    if (!window.ethereum) return;
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+      const count = Number(await contract.licenseCount());
+      const data: Application[] = [];
+
+      for (let i = count; i >= 1; i--) {
+        const lic = await contract.getLicense(i);
+        data.push({
+          id: Number(lic[0]),
+          businessName: lic[1],
+          regNumber: lic[2],
+          sector: lic[7],
+          ipfsHash: lic[8],
+          applicant: lic[9],
+          date: lic[10] > 0 ? new Date(Number(lic[10]) * 1000).toLocaleDateString() : "New Request",
+          status: lic[12]
+        });
+      }
+      setApplications(data);
+    } catch (err) {
+      console.error("Sync Error:", err);
+    }
+  };
+
+  const handleAction = async (id: number, action: "approve" | "reject" | "revoke") => {
     try {
       setProcessingId(id);
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-      
-      const applicantAddress = await signer.getAddress(); // In real app, use app.walletAddress
 
-      const tx = await contract.issueLicense(businessName, applicantAddress);
-      
-      toast({ title: "Minting License... ⏳", description: "Please wait for blockchain confirmation." });
+      let tx;
+      if (action === "approve") tx = await contract.approveLicense(id);
+      else if (action === "reject") tx = await contract.rejectLicense(id);
+      else if (action === "revoke") {
+        if (!confirm("Are you sure?")) { setProcessingId(null); return; }
+        tx = await contract.revokeLicense(id);
+      }
+
+      toast({ title: "Processing...", description: "Please sign in MetaMask." });
       await tx.wait(); 
-
-      setApplications(applications.map(app => 
-        app.id === id ? { ...app, status: "Approved" } : app
-      ));
-      toast({ title: "Success! ✅", description: "License minted on Blockchain.", className: "bg-green-600 text-white" });
-
+      toast({ title: "Success!", description: `License ${action}ed successfully.` });
+      fetchBlockchainData();
     } catch (error: any) {
       console.error(error);
-      toast({ title: "Failed ❌", description: error.reason || error.message, variant: "destructive" });
+      toast({ title: "Failed", description: error.reason || error.message, variant: "destructive" });
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleReject = (id: number) => {
-    setApplications(applications.map(app => app.id === id ? { ...app, status: "Rejected" } : app));
-    toast({ title: "Rejected ❌", variant: "destructive" });
-  };
+  const stats = useMemo(() => [
+    { label: "Pending", count: applications.filter(a => a.status === "Pending").length, sub: "Action Required", color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Approved", count: applications.filter(a => a.status === "Approved").length, sub: "Total Minted", color: "text-green-600", bg: "bg-green-50" },
+    { label: "Revoked", count: applications.filter(a => a.status === "Revoked").length, sub: "Action Taken", color: "text-red-600", bg: "bg-red-50" },
+    { label: "Active", count: applications.length, sub: "Total issued", color: "text-purple-600", bg: "bg-purple-50" },
+  ], [applications]);
 
-  const handleRevoke = async (id: number) => {
-    if(!confirm("Revoke this license permanently?")) return;
-    
-    // Note: For real revocation, you'd need the License ID from the blockchain
-    // For this UI demo, we just update the status
-    setApplications(applications.map(app => app.id === id ? { ...app, status: "Revoked" } : app));
-    toast({ title: "License Revoked ⚠️", variant: "destructive" });
-  };
-
-  // --- RENDER: LOGIN GATE (If not Admin) ---
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <Header />
         <div className="flex-grow flex items-center justify-center p-4">
-          <Card className="w-full max-w-md shadow-2xl border-t-4 border-t-slate-800">
+          <Card className="w-full max-w-md shadow-2xl border-t-4 border-slate-900">
             <CardHeader className="text-center">
-              <div className="mx-auto bg-slate-100 p-4 rounded-full w-fit mb-4">
-                <Lock className="h-10 w-10 text-slate-800" />
-              </div>
+              <div className="mx-auto bg-slate-100 p-4 rounded-full w-fit mb-4"><Lock className="h-10 w-10 text-slate-800" /></div>
               <CardTitle className="text-2xl font-bold text-slate-900">Admin Verification</CardTitle>
-              <CardDescription>
-                This area is restricted to the Contract Owner. <br/>
-                Please connect the <strong>Admin Wallet</strong> to proceed.
-              </CardDescription>
+              <CardDescription>Connect the Admin Wallet to proceed.</CardDescription>
             </CardHeader>
             <CardContent>
               {currentAddress && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-center text-sm text-red-700">
                   <p className="font-bold">Access Denied</p>
-                  <p>Connected: {currentAddress.slice(0, 6)}...{currentAddress.slice(-4)}</p>
-                  <p>This wallet is not authorized.</p>
                 </div>
               )}
-              <Button 
-                onClick={handleAdminLogin} 
-                className="w-full h-12 text-lg bg-slate-900 hover:bg-slate-800"
-                disabled={checkingAuth}
-              >
-                {checkingAuth ? <Loader2 className="animate-spin mr-2" /> : <><ShieldAlert className="mr-2 h-5 w-5" /> Verify Admin Identity</>}
+              <Button onClick={handleLogin} className="w-full h-12 text-lg bg-slate-900 hover:bg-slate-800" disabled={isConnecting}>
+                {isConnecting ? <Loader2 className="animate-spin mr-2" /> : <><ShieldAlert className="mr-2 h-5 w-5" /> Verify Admin Identity</>}
               </Button>
             </CardContent>
           </Card>
@@ -191,32 +152,26 @@ const AdminDashboard = () => {
     );
   }
 
-  // --- RENDER: DASHBOARD (Only if isAdmin === true) ---
-  const stats = [
-    { label: "Pending", count: applications.filter(a => a.status === "Pending").length, sub: "Action Required", color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Approved", count: applications.filter(a => a.status === "Approved").length, sub: "Total Minted", color: "text-green-600", bg: "bg-green-50" },
-    { label: "Revoked", count: applications.filter(a => a.status === "Revoked").length, sub: "Action Taken", color: "text-red-600", bg: "bg-red-50" },
-    { label: "Active", count: 342, sub: "Total issued", color: "text-purple-600", bg: "bg-purple-50" },
-  ];
-
   return (
     <div className="min-h-screen bg-slate-50">
       <Header />
       <main className="container mx-auto px-4 py-8">
-        
-        {/* Top Bar */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-bold text-slate-900">Admin Portal</h1>
-              <Badge className="bg-slate-900 text-white hover:bg-slate-800">SECURE MODE</Badge>
+              <Badge className="bg-slate-900 text-white">SECURE MODE</Badge>
             </div>
-            <p className="text-slate-500">Logged in as: <span className="font-mono text-xs">{currentAddress}</span></p>
+            <p className="text-slate-500 text-sm mt-1">Logged in as: <span className="font-mono bg-slate-200 px-1 rounded">{currentAddress}</span></p>
           </div>
-          <Button variant="outline" onClick={() => setIsAdmin(false)}>Disconnect</Button>
+          <div className="flex gap-2">
+             <Button variant="outline" onClick={fetchBlockchainData} disabled={processingId !== null}>
+               <RefreshCw className={`mr-2 h-4 w-4 ${processingId ? 'animate-spin' : ''}`} /> Refresh
+             </Button>
+             <Button variant="outline" onClick={() => setIsAdmin(false)}>Disconnect</Button>
+          </div>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {stats.map((stat, i) => (
             <Card key={i} className="border-none shadow-sm">
@@ -231,23 +186,14 @@ const AdminDashboard = () => {
           ))}
         </div>
 
-        {/* Actions */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
-          {[
-            { label: "Pending Apps", icon: FileText },
-            { label: "Approved List", icon: CheckCircle },
-            { label: "Revoke/Reject", icon: XCircle },
-            { label: "Renewals", icon: RefreshCw },
-            { label: "Verify", icon: Search },
-          ].map((btn, i) => (
-            <Button key={i} variant="outline" className="h-24 flex-col gap-2 bg-white hover:bg-slate-50 hover:border-blue-300">
-              <btn.icon className="h-6 w-6 text-slate-600" />
-              <span className="text-slate-700">{btn.label}</span>
+          {[{ label: "Pending Apps", icon: FileText }, { label: "Approved List", icon: CheckCircle }, { label: "Revoke/Reject", icon: XCircle }, { label: "Renewals", icon: RefreshCw }, { label: "Verify", icon: Search }].map((btn, i) => (
+            <Button key={i} variant="outline" className="h-24 flex-col gap-2 bg-white hover:bg-slate-50 hover:border-slate-300 shadow-sm">
+              <btn.icon className="h-6 w-6 text-slate-600" /><span className="text-slate-700 font-medium">{btn.label}</span>
             </Button>
           ))}
         </div>
 
-        {/* Main Table */}
         <Card className="shadow-lg border-slate-200">
           <div className="p-6 border-b border-slate-100 bg-slate-50/50">
             <h2 className="text-lg font-bold text-slate-900">Pending Applications</h2>
@@ -265,57 +211,39 @@ const AdminDashboard = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {applications.map((app) => (
-                  <TableRow key={app.id}>
-                    <TableCell className="pl-6 font-medium">{app.businessName}</TableCell>
-                    <TableCell>{app.owner}</TableCell>
-                    <TableCell>{app.date}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        app.status === "Approved" ? "default" : 
-                        app.status === "Rejected" ? "destructive" : 
-                        app.status === "Revoked" ? "destructive" : "secondary"
-                      }>
-                        {app.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      
-                      {app.status === "Pending" && (
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            size="sm" variant="outline"
-                            className="text-red-600 hover:bg-red-50 border-red-200"
-                            onClick={() => handleReject(app.id)}
-                            disabled={processingId !== null}
-                          >
-                            <XCircle className="h-4 w-4 mr-1" /> Reject
-                          </Button>
-
-                          <Button 
-                            size="sm" 
-                            className="bg-slate-900 hover:bg-slate-800 text-white"
-                            onClick={() => handleApprove(app.id, app.businessName)}
-                            disabled={processingId !== null}
-                          >
-                            {processingId === app.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve & Mint"}
-                          </Button>
+                {applications.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-12 text-slate-500">No applications found on Blockchain yet.</TableCell></TableRow>
+                ) : (
+                  applications.map((app) => (
+                    <TableRow key={app.id}>
+                      <TableCell className="pl-6 font-medium text-slate-900">{app.businessName}</TableCell>
+                      <TableCell><div className="text-sm">{app.applicant.slice(0,6)}...{app.applicant.slice(-4)}</div><div className="text-xs text-slate-400">{app.sector}</div></TableCell>
+                      <TableCell>{app.date}</TableCell>
+                      <TableCell>
+                        <Badge variant={app.status === "Approved" ? "default" : app.status === "Rejected" ? "destructive" : app.status === "Revoked" ? "destructive" : "secondary"}>{app.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <div className="flex justify-end gap-2 items-center">
+                            <Dialog>
+                                <DialogTrigger asChild><Button size="icon" variant="ghost" className="h-8 w-8"><Eye className="h-4 w-4 text-slate-500"/></Button></DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader><DialogTitle>{app.businessName}</DialogTitle></DialogHeader>
+                                    <div className="space-y-2 text-sm"><p><strong>Reg No:</strong> {app.regNumber}</p><p><strong>Sector:</strong> {app.sector}</p><p><strong>Address:</strong> {app.applicant}</p><p><strong>Proof:</strong> {app.ipfsHash ? (<a href={app.ipfsHash} target="_blank" className="ml-2 text-blue-600 underline inline-flex items-center">View IPFS <ExternalLink className="h-3 w-3 ml-1"/></a>) : " No Doc"}</p></div>
+                                </DialogContent>
+                            </Dialog>
+                            {app.status === "Pending" && (
+                              <>
+                                <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50 border-red-200" onClick={() => handleAction(app.id, "reject")} disabled={processingId === app.id}>Reject</Button>
+                                <Button size="sm" className="bg-slate-900 hover:bg-slate-800 text-white" onClick={() => handleAction(app.id, "approve")} disabled={processingId === app.id}>{processingId === app.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Approve & Mint"}</Button>
+                              </>
+                            )}
+                            {app.status === "Approved" && (<Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => handleAction(app.id, "revoke")}>Revoke</Button>)}
+                            {(app.status === "Rejected" || app.status === "Revoked") && (<span className="text-slate-400 text-sm italic pr-2">Closed</span>)}
                         </div>
-                      )}
-
-                      {app.status === "Approved" && (
-                        <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => handleRevoke(app.id)}>
-                          Revoke
-                        </Button>
-                      )}
-
-                      {(app.status === "Rejected" || app.status === "Revoked") && (
-                        <span className="text-slate-400 text-sm italic">Case Closed</span>
-                      )}
-
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
