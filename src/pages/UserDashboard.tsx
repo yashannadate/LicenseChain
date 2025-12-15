@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { 
   FileText, Upload, Activity, RefreshCw, Download, 
-  ShieldCheck, Bell, Loader2, X, PlusCircle 
+  ShieldCheck, Bell, Loader2, X, AlertTriangle 
 } from "lucide-react";
 import { ethers } from "ethers";
 import { jsPDF } from "jspdf";
@@ -20,12 +20,15 @@ const UserDashboard = () => {
   const [walletAddress, setWalletAddress] = useState("");
   const [myLicense, setMyLicense] = useState<any>(null);
   
-  // State for the Application Status Popup
+  // --- NEW STATE: RENEWAL ---
+  const [renewalDue, setRenewalDue] = useState(false);
+  
   const [showStatusModal, setShowStatusModal] = useState(false);
 
-  // --- BLOCKCHAIN LOGIC ---
+  // --- KEEPING AUTO-LOGIN FOR NOW ---
   useEffect(() => {
     checkWalletAndFetch();
+
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', (accounts: string[]) => {
         if (accounts.length > 0) {
@@ -37,6 +40,7 @@ const UserDashboard = () => {
         }
       });
     }
+
     return () => {
       if (window.ethereum && window.ethereum.removeListener) {
         window.ethereum.removeListener('accountsChanged', () => {}); 
@@ -71,7 +75,21 @@ const UserDashboard = () => {
       let foundLicense = null;
       for (let i = totalLicenses; i > 100; i--) {
         const data = await contract.getLicense(i);
+        // Check if the connected wallet owns this license
         if (data[2].toLowerCase() === userAddress.toLowerCase()) {
+            
+          // --- NEW LOGIC: CHECK EXPIRY DATE ---
+          const expiryTimestamp = Number(data[4]);
+          const currentTimestamp = Math.floor(Date.now() / 1000);
+           const thirtyDays = 30 * 24 * 60 * 60; // TEMPORARY TEST: 700 days// 30 days in seconds
+          
+          // Logic: If expiring in < 30 days AND currently valid
+          if (expiryTimestamp - currentTimestamp < thirtyDays && data[5]) {
+            setRenewalDue(true); // TRIGGER THE ALERT
+          } else {
+            setRenewalDue(false);
+          }
+
           foundLicense = {
             id: data[0].toString(),
             businessName: data[1],
@@ -80,7 +98,7 @@ const UserDashboard = () => {
             isValid: data[5],
             status: data[5] ? "Approved" : "Revoked"
           };
-          break;
+          break; // Stop loop once found
         }
       }
       setMyLicense(foundLicense);
@@ -91,6 +109,19 @@ const UserDashboard = () => {
     }
   };
 
+  // --- NEW: RENEW FUNCTION ---
+  const handleRenew = () => {
+    // In a real scenario, this calls the smart contract. 
+    // For Phase 1/2 WIP, we show the user the request is sent.
+    toast({
+      title: "Renewal Request Sent 🔄",
+      description: "Your request has been forwarded to the Admin for approval.",
+      className: "bg-blue-600 text-white"
+    });
+    setRenewalDue(false); // Hide the popup after clicking
+  };
+
+  // PDF Generator
   const generatePDF = () => {
     if (!myLicense) return;
     const doc = new jsPDF();
@@ -107,11 +138,10 @@ const UserDashboard = () => {
     toast({ title: "Downloaded! 📄", description: "Certificate saved to your device." });
   };
 
-  // --- ACTIONS (Clean, Management tasks only) ---
   const actions = [
     { title: "Upload Documents", desc: "KYC & certificates", icon: Upload, color: "text-purple-600", bg: "bg-purple-50" },
     { title: "View Application Status", desc: "Track progress", icon: Activity, color: "text-green-600", bg: "bg-green-50", onClick: () => setShowStatusModal(true) },
-    { title: "Renew License", desc: "Extend validity", icon: RefreshCw, color: "text-orange-600", bg: "bg-orange-50" },
+    { title: "Renew License", desc: "Extend validity", icon: RefreshCw, color: "text-orange-600", bg: "bg-orange-50", onClick: handleRenew }, 
     { title: "Download NFT License", desc: "Get blockchain certificate", icon: Download, color: "text-indigo-600", bg: "bg-indigo-50" },
     { title: "Check Validity", desc: "View expiry details", icon: ShieldCheck, color: "text-teal-600", bg: "bg-teal-50" },
     { title: "Notifications", desc: "View alerts", icon: Bell, color: "text-yellow-600", bg: "bg-yellow-50" },
@@ -122,25 +152,33 @@ const UserDashboard = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-8">
-        
-        {/* --- HEADER WITH PRIMARY ACTION BUTTON --- */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">User Dashboard</h1>
             <p className="text-slate-500">Manage your licenses and applications</p>
           </div>
-          
-          {/* THE NEW "BEST UI" BUTTON */}
-          <Button 
-            onClick={() => navigate("/apply")} 
-            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all hover:scale-105"
-          >
-            <PlusCircle className="mr-2 h-4 w-4" /> 
-            New Application
-          </Button>
         </div>
 
-        {/* --- ACTION GRID --- */}
+        {/* --- NEW: RENEWAL ALERT NOTIFICATION --- */}
+        {renewalDue && (
+          <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in slide-in-from-top-2 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-100 rounded-full text-amber-600">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-amber-900">License Expiring Soon</h3>
+                <p className="text-sm text-amber-700">Your license is set to expire on <b>{myLicense?.expiryDate}</b>. Please renew to maintain validity.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button size="sm" variant="outline" className="border-amber-200 text-amber-700 hover:bg-amber-100" onClick={() => setRenewalDue(false)}>Dismiss</Button>
+              <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white" onClick={handleRenew}>Accept & Renew</Button>
+            </div>
+          </div>
+        )}
+        {/* -------------------------------------- */}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {actions.map((action, index) => (
             <Card key={index} className="hover:shadow-md transition-all cursor-pointer border-slate-200 group" onClick={action.onClick}>
@@ -157,52 +195,56 @@ const UserDashboard = () => {
           ))}
         </div>
 
-        {/* --- RECENT ACTIVITY --- */}
         <h2 className="text-xl font-bold text-slate-900 mb-6">Active Licenses</h2>
         
         {!walletAddress ? (
            <div className="text-center py-10 bg-white rounded-lg border border-dashed">
+             <p className="text-slate-500 mb-4">Connect your wallet to see your licenses</p>
              <Button onClick={checkWalletAndFetch}>Connect Wallet</Button>
            </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-10">
              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
           </div>
-        ) : myLicense ? (
-          <Card className={`border-l-4 ${myLicense.status === "Approved" ? "border-l-green-500" : "border-l-red-500"}`}>
-            <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className={`p-2 rounded-full ${myLicense.status === "Approved" ? "bg-green-100" : "bg-red-100"}`}>
-                  <ShieldCheck className={`h-6 w-6 ${myLicense.status === "Approved" ? "text-green-600" : "text-red-600"}`} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900">{myLicense.businessName}</h3>
-                  <p className="text-sm text-slate-500">License #{myLicense.id} • Issued on {myLicense.issueDate}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <Badge className={myLicense.status === "Approved" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
-                  {myLicense.status}
-                </Badge>
-                <Button variant="outline" size="sm" onClick={generatePDF} className="gap-2">
-                  <Download className="h-4 w-4" /> Download PDF
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         ) : (
-          <Card className="bg-slate-50 border-dashed">
-            <CardContent className="text-center py-10 text-slate-500">
-              <p>No active licenses found.</p>
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            {myLicense ? (
+              <Card className={`border-l-4 ${myLicense.status === "Approved" ? "border-l-green-500" : "border-l-red-500"}`}>
+                <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-full ${myLicense.status === "Approved" ? "bg-green-100" : "bg-red-100"}`}>
+                      <ShieldCheck className={`h-6 w-6 ${myLicense.status === "Approved" ? "text-green-600" : "text-red-600"}`} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900">{myLicense.businessName}</h3>
+                      <p className="text-sm text-slate-500">License #{myLicense.id} • Issued on {myLicense.issueDate}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Badge className={myLicense.status === "Approved" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                      {myLicense.status}
+                    </Badge>
+                    <Button variant="outline" size="sm" onClick={generatePDF} className="gap-2">
+                      <Download className="h-4 w-4" /> Download PDF
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="bg-slate-50 border-dashed">
+                <CardContent className="text-center py-10 text-slate-500">
+                  <p>No active licenses found for this wallet.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
       </main>
 
-      {/* --- POPUP MODAL --- */}
+      {/* MODAL for Application Status */}
       {showStatusModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-200">
+          <Card className="w-full max-w-lg shadow-2xl">
             <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
               <CardTitle>Application Status</CardTitle>
               <Button variant="ghost" size="icon" onClick={() => setShowStatusModal(false)}>
@@ -220,24 +262,9 @@ const UserDashboard = () => {
                     <p className="text-xs text-slate-500">ID #Pending • Submitted Jan 10, 2025</p>
                   </div>
                 </div>
-                <Badge className="bg-yellow-200 text-yellow-800 hover:bg-yellow-300">In Review</Badge>
-              </div>
-               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white rounded-full">
-                    <FileText className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-slate-900">Business Registration</h4>
-                    <p className="text-xs text-slate-500">Submitted Jan 05, 2025</p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-slate-500">Documents Received</Badge>
+                <Badge className="bg-yellow-200 text-yellow-800">In Review</Badge>
               </div>
             </CardContent>
-            <div className="p-4 bg-slate-50 border-t flex justify-end">
-              <Button variant="outline" onClick={() => setShowStatusModal(false)}>Close</Button>
-            </div>
           </Card>
         </div>
       )}
