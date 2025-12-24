@@ -20,7 +20,7 @@
 * **Real-Time Telemetry:** Provides applicants with instant, transparent status updates (Pending, Approved, Revoked) directly from the blockchain state.
 
 ### 🔍 Verification Layer (Public Access)
-* **Trustless Verification:** Enables third-party verifiers to instantaneously authenticate license validity via Unique License ID or Wallet Address, eliminating the need for centralized intermediaries.
+* **Trustless Verification:** Enables third-party verifiers to instantaneously authenticate license validity via License ID / Registration Number, eliminating the need for centralized intermediaries.
 * **Fraud Mitigation:** Instantly flags "Revoked" or expired statuses globally, preventing the circulation of invalid credentials.
 
 ---
