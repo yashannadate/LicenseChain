@@ -1,51 +1,86 @@
-# LicenseChain: Decentralized Licensing & Identity Protocol 🛡️
+# 🛡️ LicenseChain - Decentralized Licensing & Identity Protocol
 
-**LicenseChain** is a robust, blockchain-architected Decentralized Application (dApp) engineered to revolutionize the issuance, lifecycle management, and verification of digital licenses. Leveraging the immutable nature of the **Ethereum** network and the decentralized storage capabilities of **IPFS**, LicenseChain eliminates bureaucratic inefficiencies, mitigates fraud, and ensures absolute data integrity.
+![LicenseChain](https://img.shields.io/badge/LicenseChain-Decentralized-green)
+![Ethereum](https://img.shields.io/badge/Blockchain-Ethereum-purple)
+![Solidity](https://img.shields.io/badge/Language-Solidity-orange)
+![React](https://img.shields.io/badge/Frontend-React-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-> **Academic Dissertation:** Submitted in partial fulfillment of the requirements for the **BSc in Blockchain Technology (2024–2025)** at **Savitribai Phule Pune University**.
+**LicenseChain** is a **blockchain-based decentralized application (dApp)** designed to revolutionize the issuance, lifecycle management, and verification of digital licenses. Leveraging the **immutable Ethereum blockchain** and **IPFS decentralized storage**, LicenseChain eliminates bureaucratic inefficiencies, mitigates fraud, and ensures absolute data integrity.
+
+**Academic Dissertation:** Submitted in partial fulfillment of the requirements for the **BSc in Blockchain Technology (2024–2025)** at Savitribai Phule Pune University.
 
 ---
 
 ## 🚀 System Architecture & Capabilities
 
 ### 🏛️ Administrative Authority (Governance Node)
-* **Cryptographic Issuance:** Deploys tamper-proof licenses as digital assets directly to applicant wallets, establishing a verifiable chain of custody.
-* **Immutable Ledger:** All regulatory actions—approvals, rejections, and revocations—are permanently cryptographically signed and recorded on-chain, creating an unalterable audit trail.
-* **Decentralized Storage:** Utilizes **IPFS (InterPlanetary File System)** for high-availability, redundancy-free storage of heavy documentation and metadata, ensuring low on-chain gas costs.
+- 🔒 **Cryptographic Issuance:** Deploys tamper-proof licenses as digital assets directly to applicant wallets, creating a verifiable chain of custody.  
+- 📜 **Immutable Ledger:** All regulatory actions—approvals, rejections, and revocations—are permanently recorded on-chain, forming an unalterable audit trail.  
+- 🌐 **Decentralized Storage:** Uses IPFS to store heavy documentation and metadata, reducing on-chain gas costs and ensuring high availability.  
 
 ### 👤 Applicant Portal (Business/User)
-* **Streamlined Onboarding:** A responsive, React-based interface facilitating seamless application submission for diverse license categories (e.g., Trade, Food Safety).
-* **Automated Compliance (Auto-Renewal):** Features smart contract-driven logic that autonomously extends license validity upon successful fee processing, ensuring uninterrupted business continuity without manual intervention.
-* **Self-Sovereign Ownership:** Licenses are issued as tokens bound to the user's **MetaMask** wallet, granting full ownership and portability of credentials.
-* **Real-Time Telemetry:** Provides applicants with instant, transparent status updates (Pending, Approved, Revoked) directly from the blockchain state.
+- ⚡ **Streamlined Onboarding:** Responsive React interface for seamless license applications across multiple categories (e.g., Trade, Food Safety).  
+- 🔄 **Automated Compliance (Auto-Renewal):** Smart contract-driven logic automatically renews licenses upon successful fee processing.  
+- 🏷️ **Self-Sovereign Ownership:** Licenses are tokenized and bound to the user’s MetaMask wallet for full ownership and portability.  
+- 📡 **Real-Time Telemetry:** Provides instant status updates (Pending, Approved, Revoked) directly from the blockchain.  
 
 ### 🔍 Verification Layer (Public Access)
-* **Trustless Verification:** Enables third-party verifiers to instantaneously authenticate license validity via License ID / Registration Number, eliminating the need for centralized intermediaries.
-* **Fraud Mitigation:** Instantly flags "Revoked" or expired statuses globally, preventing the circulation of invalid credentials.
+- ✅ **Trustless Verification:** Third-party verifiers can authenticate licenses instantly via License ID / Registration Number.  
+- 🛡️ **Fraud Mitigation:** Flags revoked or expired licenses globally, preventing circulation of invalid credentials.  
 
 ---
 
 ## 🛠️ Technology Stack
 
 | Domain | Technology / Framework |
-| :--- | :--- |
-| **Frontend Architecture** | React.js, TypeScript, Vite |
-| **Smart Contract Logic** | Solidity (Ethereum Virtual Machine) |
-| **Development & Testing** | Truffle Suite** (**Unit Testing**) & Remix IDE (**Prototyping**) |
-| **Blockchain Interaction** | Ethers.js (Web3 Provider) |
-| **Decentralized Storage** | IPFS (InterPlanetary File System) |
-| **Identity Management** | MetaMask (Injected Web3 Wallet) |
+|--------|----------------------|
+| Frontend Architecture | React.js, TypeScript, Vite |
+| Smart Contract Logic | Solidity (Ethereum Virtual Machine) |
+| Development & Testing | Truffle Suite (Unit Testing), Remix IDE (Prototyping) |
+| Blockchain Interaction | Ethers.js (Web3 Provider) |
+| Decentralized Storage | IPFS (InterPlanetary File System) |
+| Identity Management | MetaMask (Injected Web3 Wallet) |
 
 ---
 
-## ⚙️ Local Development Setup
+## 🛠️ Contract Information
 
-Follow these instructions to deploy the frontend environment locally.
+- **Devnet Address:** `INSERT_DEVNET_ADDRESS_HERE`  
 
-### 1. Prerequisites
-Ensure you have **Node.js** and **npm** installed.
+![LicenseChain Screenshot](https://github.com/user-attachments/assets/72b58759-950d-4f23-a058-cb2ddad1c7a2)
 
-### 2. Clone the Repository
-```bash
-git clone [https://github.com/yashannadate/LicenseChain-FrontEnd.git](https://github.com/yashannadate/LicenseChain-FrontEnd.git)
-cd LicenseChain-FrontEnd
+- **Compiler Version:** Solidity (Latest Stable)  
+- **Dependencies:** OpenZeppelin Contracts, Ethers.js  
+- **Gas Optimization:** Optimized for minimal transaction costs  
+- **Security Audits:** Pending  
+
+---
+
+## 🚀 Getting Started
+
+1. Submit license applications via the React frontend  
+2. Admins issue, renew, or revoke licenses using governance smart contracts  
+3. Verify licenses through the public verification portal  
+
+> For detailed API and developer documentation, refer to the project docs.
+
+---
+
+## 🎨 Screenshots
+
+<img width="1268" height="902" alt="Screenshot 1" src="https://github.com/user-attachments/assets/72b58759-950d-4f23-a058-cb2ddad1c7a2" />  
+
+<img width="1272" height="868" alt="Screenshot 2" src="https://github.com/user-attachments/assets/5d706639-e740-408f-aa4f-45f1a57726a6" />  
+
+<img width="1269" height="871" alt="Screenshot 3" src="https://github.com/user-attachments/assets/36e4428c-5c87-4ec7-b3b0-1a8f06c2a628" />  
+
+<img width="1276" height="905" alt="Screenshot 4" src="https://github.com/user-attachments/assets/e96581b1-6638-45c6-ab61-8403d8589ca5" />  
+
+<img width="1280" height="903" alt="Screenshot 5" src="https://github.com/user-attachments/assets/2e4eb6b3-47f9-4c33-9607-188953599e85" />  
+
+---
+
+## 📜 License
+
+This project is **open-source** under the **MIT License**.
