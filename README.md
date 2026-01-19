@@ -93,13 +93,10 @@ This project demonstrates the practical application of blockchain technology in 
 
 ---
 
-## 📜 License
+## 📜 License & Usage
 
-This project is **open-source** and distributed under the **MIT License**.
+This project is the exclusive intellectual property of the author.  
+Unauthorized copying, modification, distribution, or reuse of this project is strictly prohibited.  
+Any use beyond review and evaluation requires prior written permission from the author.
+.---
 
----
-
-## 📌 Disclaimer
-
-This project is developed strictly for **academic and research purposes**.  
-It is **not intended for production use** without formal security audits, compliance validation, and regulatory approval.
