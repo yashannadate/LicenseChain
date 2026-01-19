@@ -1,4 +1,4 @@
-# 🛡️ LicenseChain - Decentralized Licensing & Identity Protocol
+# 🛡️ LicenseChain — Decentralized Licensing & Identity Protocol
 
 ![LicenseChain](https://img.shields.io/badge/LicenseChain-Decentralized-green)
 ![Ethereum](https://img.shields.io/badge/Blockchain-Ethereum-purple)
@@ -6,72 +6,86 @@
 ![React](https://img.shields.io/badge/Frontend-React-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**LicenseChain** is a **blockchain-based decentralized application (dApp)** designed to revolutionize the issuance, lifecycle management, and verification of digital licenses. Leveraging the **immutable Ethereum blockchain** and **IPFS decentralized storage**, LicenseChain eliminates bureaucratic inefficiencies, mitigates fraud, and ensures absolute data integrity.
+## 📘 Overview
 
-**Academic Dissertation:** Submitted in partial fulfillment of the requirements for the **BSc in Blockchain Technology (2024–2025)** at Savitribai Phule Pune University.
+**LicenseChain** is a blockchain-based decentralized application (dApp) designed to modernize the issuance, lifecycle management, and verification of digital licenses. By leveraging the **Ethereum blockchain** for immutability and **IPFS** for decentralized storage, LicenseChain eliminates centralized inefficiencies, mitigates fraud, and ensures transparent, tamper-proof license management.
+
+This project demonstrates the practical application of blockchain technology in real-world governance and regulatory systems.
 
 ---
 
-## 🚀 System Architecture & Capabilities
+## 🧩 System Architecture & Core Features
 
-### 🏛️ Administrative Authority (Governance Node)
-- 🔒 **Cryptographic Issuance:** Deploys tamper-proof licenses as digital assets directly to applicant wallets, creating a verifiable chain of custody.  
-- 📜 **Immutable Ledger:** All regulatory actions—approvals, rejections, and revocations—are permanently recorded on-chain, forming an unalterable audit trail.  
-- 🌐 **Decentralized Storage:** Uses IPFS to store heavy documentation and metadata, reducing on-chain gas costs and ensuring high availability.  
+### 🏛️ Administrative Authority (Governance Layer)
+- Secure issuance of licenses using smart contracts  
+- Immutable on-chain audit trail for approvals, renewals, and revocations  
+- IPFS-based decentralized storage for license metadata and documents  
 
-### 👤 Applicant Portal (Business/User)
-- ⚡ **Streamlined Onboarding:** Responsive React interface for seamless license applications across multiple categories (e.g., Trade, Food Safety).  
-- 🔄 **Automated Compliance (Auto-Renewal):** Smart contract-driven logic automatically renews licenses upon successful fee processing.  
-- 🏷️ **Self-Sovereign Ownership:** Licenses are tokenized and bound to the user’s MetaMask wallet for full ownership and portability.  
-- 📡 **Real-Time Telemetry:** Provides instant status updates (Pending, Approved, Revoked) directly from the blockchain.  
+### 👤 Applicant Portal (User Layer)
+- React-based interface for license applications  
+- Smart contract-driven automated renewals  
+- Self-sovereign license ownership via MetaMask wallets  
+- Real-time blockchain-backed status tracking  
 
-### 🔍 Verification Layer (Public Access)
-- ✅ **Trustless Verification:** Third-party verifiers can authenticate licenses instantly via License ID / Registration Number.  
-- 🛡️ **Fraud Mitigation:** Flags revoked or expired licenses globally, preventing circulation of invalid credentials.  
+### 🔍 Public Verification Layer
+- Trustless verification using License ID or Registration Number  
+- Global visibility of revoked or expired licenses  
+- No intermediary dependency for verification  
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Domain | Technology / Framework |
-|--------|----------------------|
-| Frontend Architecture | React.js, TypeScript, Vite |
-| Smart Contract Logic | Solidity (Ethereum Virtual Machine) |
-| Development & Testing | Truffle Suite (Unit Testing), Remix IDE (Prototyping) |
-| Blockchain Interaction | Ethers.js (Web3 Provider) |
-| Decentralized Storage | IPFS (InterPlanetary File System) |
-| Identity Management | MetaMask (Injected Web3 Wallet) |
+| Layer | Technology |
+|------|-----------|
+| Frontend | React.js, TypeScript, Vite |
+| Smart Contracts | Solidity (EVM Compatible) |
+| Development Tools | Remix IDE, Truffle Suite |
+| Web3 Integration | Ethers.js |
+| Decentralized Storage | IPFS |
+| Wallet & Identity | MetaMask |
 
 ---
 
-## 🛠️ Contract Information
+## 🔐 Smart Contract Details
 
-- **Devnet Address:** `INSERT_DEVNET_ADDRESS_HERE`  
-
-![LicenseChain Screenshot]()
-
-- **Compiler Version:** Solidity (Latest Stable)  
-- **Dependencies:** OpenZeppelin Contracts, Ethers.js  
-- **Gas Optimization:** Optimized for minimal transaction costs  
-- **Security Audits:** Pending  
+- Compiler Version: Solidity (Latest Stable)  
+- Libraries: OpenZeppelin Contracts  
+- Gas Optimization: Optimized for reduced transaction costs  
+- Security Audit: Pending (Academic Prototype)  
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Application Workflow
 
-1. Submit license applications via the React frontend  
-2. Admins issue, renew, or revoke licenses using governance smart contracts  
-3. Verify licenses through the public verification portal  
-
-> For detailed API and developer documentation, refer to the project docs.
+1. Applicants submit license requests through the frontend  
+2. Administrators review and issue licenses via governance contracts  
+3. License data is stored immutably on Ethereum with metadata on IPFS  
+4. Third parties verify licenses through the public verification portal  
 
 ---
 
-## 🎨 Screenshots
+## 🖼️ Screenshots
 
+<img width="1901" height="1029" alt="Application Screenshot" src="https://github.com/user-attachments/assets/3055b908-d8a1-471c-b86e-917c70fbceb4" />
+
+<img width="1534" height="1019" alt="Admin Dashboard" src="https://github.com/user-attachments/assets/f8c2ca0c-a1e8-409e-8ad7-258742b34083" />
+
+<img width="1586" height="1028" alt="Verification Portal" src="https://github.com/user-attachments/assets/02197721-211c-4781-be46-101f94dbaa3e" />
+
+<img width="1913" height="1016" alt="Blockchain Interaction" src="https://github.com/user-attachments/assets/046f6e65-03b1-424f-9ff8-07e2e70706e4" />
+
+<img width="1916" height="1029" alt="License Management" src="https://github.com/user-attachments/assets/448ce360-5dff-44cd-ae4f-f9f3082590be" />
 
 ---
 
 ## 📜 License
 
-This project is **open-source** under the **MIT License**.
+This project is open-source and distributed under the **MIT License**.
+
+---
+
+## 📌 Disclaimer
+
+This project is developed for **academic and research purposes**. It is not intended for production use without formal security audits and regulatory approval.
+
