@@ -53,8 +53,7 @@ This project demonstrates the practical application of blockchain technology in 
 
 - **Compiler Version:** Solidity (Latest Stable)  
 - **Libraries Used:** OpenZeppelin Contracts  
-- **Gas Optimization:** Optimized for reduced transaction costs  
-- **Security Audit:** Pending (Academic Prototype)  
+- **Gas Optimization:** Optimized for reduced transaction costs   
 
 ---
 
