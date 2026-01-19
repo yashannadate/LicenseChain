@@ -68,7 +68,7 @@ This project demonstrates the practical application of blockchain technology in 
 
 ## 🖼️ Application Screenshots
 
-### 📋 Registration Dashboard
+### 📋 Main Dashboard
 <img width="1901" height="1029" alt="Registration Dashboard" src="https://github.com/user-attachments/assets/3055b908-d8a1-471c-b86e-917c70fbceb4" />
 
 ---
